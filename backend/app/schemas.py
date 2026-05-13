@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from datetime import datetime
 
 class UserBase(BaseModel):
     username: str
@@ -9,6 +10,31 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
+
+    class Config:
+        from_attributes = True
+
+class AnnotationBase(BaseModel):
+    timestamp: float
+    x: float
+    y: float
+    width: float
+    height: float
+
+class AnnotationCreate(AnnotationBase):
+    video_id: int
+
+class AnnotationUpdate(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+class AnnotationResponse(AnnotationBase):
+    id: int
+    video_id: int
+    user_id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
