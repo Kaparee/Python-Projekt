@@ -31,6 +31,8 @@ class Annotation(Base):
     y = Column(Float, nullable=False)
     width = Column(Float, nullable=False)
     height = Column(Float, nullable=False)
+    label = Column(String, nullable=True)
+    color = Column(String(7), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
 class Tag(Base):

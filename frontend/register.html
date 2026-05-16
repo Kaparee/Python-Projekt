@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - VisionAnnotate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="login-container">
+        <div class="va-card login-card text-center">
+            <div class="login-icon-wrapper">
+                <i class="bi bi-person-plus"></i>
+            </div>
+
+            <h3 class="mb-2">Create Account</h3>
+            <p class="text-muted mb-4" style="font-size: 0.9rem;">Join VisionAnnotate spatial workspaces.</p>
+
+            <form action="dashboard.html">
+                <div class="mb-3 text-start">
+                    <label for="nameInput" class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="nameInput" placeholder="John Doe" required>
+                </div>
+
+                <div class="mb-3 text-start">
+                    <label for="emailInput" class="form-label">Email address</label>
+                    <input type="email" class="form-control" id="emailInput" placeholder="name@company.com" required>
+                </div>
+
+                <div class="mb-4 text-start">
+                    <label for="passwordInput" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="passwordInput" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-4">Create Account</button>
+            </form>
+
+            <p class="text-muted" style="font-size: 0.85rem;">
+                Already have an account? <a href="login.html" class="text-decoration-none"
+                    style="color: var(--va-text-muted);">Sign in.</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelector("form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            let b = {
+                username: document.getElementById('nameInput').value,
+                email: document.getElementById('emailInput').value,
+                password: document.getElementById('passwordInput').value
+            };
+            let r = await fetch('http://localhost:8000/auth/register', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(b)
+            });
+            if(r.ok) {
+                alert("Konto zostało pomyślnie utworzone! Możesz się teraz zalogować.");
+                window.location.href = "login.html";
+            } else {
+                try {
+                    let err = await r.json();
+                    alert("Błąd rejestracji: " + (err.detail || "Nieznany błąd"));
+                } catch(e) {
+                    alert("Błąd rejestracji. Spróbuj ponownie.");
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
