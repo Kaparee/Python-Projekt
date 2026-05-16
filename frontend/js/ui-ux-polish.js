@@ -83,12 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (!AppState.notes || AppState.notes.length === 0) {
-        AppState.notes = [
-            { id: 1, time: 14.5, text: 'Object enters frame from left', type: 'note' }
-        ];
-        AppState.notify();
-    }
+
 
     const noteInput = document.querySelector('.note-input');
     if (noteInput) {

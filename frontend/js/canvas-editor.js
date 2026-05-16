@@ -44,24 +44,6 @@ window.deleteSelectedBox = function() {
     window.selectedBox = null;
     
     AppState.notify();
-    
-    const token = localStorage.getItem('access_token');
-    if(idToDelete && !String(idToDelete).startsWith('mock')) {
-        fetch(`http://localhost:8000/annotations/${idToDelete}`, {
-            method: 'DELETE',
-            headers: {
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("API Unauthorized or missing");
-            console.log("Deleted from server successfully");
-        })
-        .catch(err => {
-            console.warn("API Delete failed, kept local state only:", err);
-            Utils.showToast("Usunięto lokalnie (Brak połączenia z serwerem)", "warning");
-        });
-    }
 };
 
 
@@ -148,34 +130,6 @@ canvasEl.addEventListener('mouseup', () => {
         activeHandle = null;
         
         AppState.notify();
-        
-        const updatedBox = { ...window.selectedBox };
-        const idToUpdate = updatedBox.id;
-        const token = localStorage.getItem('access_token');
-        
-        if(idToUpdate && !String(idToUpdate).startsWith('mock')) {
-            fetch(`http://localhost:8000/annotations/${idToUpdate}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({
-                    x: updatedBox.x,
-                    y: updatedBox.y,
-                    width: updatedBox.width,
-                    height: updatedBox.height
-                })
-            })
-            .then(res => {
-                if(!res.ok) throw new Error("API Update failed");
-                console.log("Updated on server");
-            })
-            .catch(err => {
-                console.warn("Update failed, kept local:", err);
-                Utils.showToast("Zmiany zapisane lokalnie", "warning");
-            });
-        }
     }
 });
 

@@ -17,4 +17,5 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(videos.router)
+app.include_router(videos.user_router)
 app.include_router(annotations.router)

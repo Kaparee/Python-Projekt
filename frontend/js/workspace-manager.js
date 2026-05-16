@@ -1,6 +1,55 @@
 
-document.addEventListener('DOMContentLoaded', () => {
-    const currentUserId = 'user_kacper'; 
+document.addEventListener('DOMContentLoaded', async () => {
+    let currentUser = null;
+    let currentUserId = null;
+    let videoId = Utils.getVideoContextId();
+
+    try {
+        let rUser = await fetch('http://localhost:8000/auth/user', {
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        if(rUser.ok) {
+            currentUser = await rUser.json();
+            currentUserId = currentUser.id.toString();
+        } else if(rUser.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        let rVideo = await fetch(`http://localhost:8000/videos/${videoId}`, {
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        if(rVideo.ok) {
+            let v = await rVideo.json();
+            document.getElementById('projectTitleDisplay').innerText = v.title || v.youtube_id;
+        }
+
+        let rVersions = await fetch(`http://localhost:8000/videos/${videoId}/versions`);
+        if(rVersions.ok) {
+            let users = await rVersions.json();
+            let carousel = document.getElementById('userCarousel');
+            if(carousel) {
+                carousel.innerHTML = '';
+                users.forEach(u => {
+                    let pill = document.createElement('div');
+                    pill.className = 'avatar-pill';
+                    pill.setAttribute('data-userid', u.id.toString());
+                    if(u.id.toString() === currentUserId) pill.classList.add('active');
+                    pill.innerHTML = `<div class="status-dot dot-blue"></div> @${u.username}`;
+                    carousel.appendChild(pill);
+                });
+                
+                if(!users.find(u => u.id.toString() === currentUserId) && currentUser) {
+                    let myPill = document.createElement('div');
+                    myPill.className = 'avatar-pill active';
+                    myPill.setAttribute('data-userid', currentUserId);
+                    myPill.innerHTML = `<div class="status-dot dot-green"></div> @${currentUser.username}`;
+                    carousel.insertBefore(myPill, carousel.firstChild);
+                }
+            }
+        }
+    } catch(e) {}
 
     document.addEventListener('click', (e) => {
         const chip = e.target.closest('.avatar-pill');
@@ -13,7 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Version chip clicked:", selectedUserId);
 
             updateAccessMode(selectedUserId, currentUserId);
-            loadUserAnnotations(selectedUserId);
+            if(typeof window.loadUserAnnotations === 'function') {
+                window.loadUserAnnotations(selectedUserId);
+            }
         }
     });
 
@@ -21,7 +72,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeChip) {
         const selectedUserId = activeChip.getAttribute('data-userid');
         updateAccessMode(selectedUserId, currentUserId);
-        setTimeout(() => loadUserAnnotations(selectedUserId), 300);
+        setTimeout(() => {
+            if(typeof window.loadUserAnnotations === 'function') {
+                window.loadUserAnnotations(selectedUserId);
+            }
+        }, 300);
     }
 });
 
@@ -43,8 +98,15 @@ function updateAccessMode(selectedUserId, currentUserId) {
 
         if(canvasEl) canvasEl.style.cursor = 'default';
         if(banner) {
-            banner.style.display = 'flex';
-            banner.innerHTML = `<i class="bi bi-eye"></i> Viewing @${selectedUserId.replace('user_', '')}'s version (Read-only)`;
+            banner.classList.remove('d-none');
+            banner.classList.add('d-flex');
+            let displayName = selectedUserId.replace('user_', '');
+            let userPill = document.querySelector(`.avatar-pill[data-userid="${selectedUserId}"]`);
+            if (userPill) {
+                let nameMatch = userPill.innerText.trim().replace('@', '');
+                if (nameMatch) displayName = nameMatch;
+            }
+            banner.innerHTML = `<i class="bi bi-eye"></i> Viewing @${displayName}'s version (Read-only)`;
         }
 
         if(noteInput) { 
@@ -76,7 +138,10 @@ function updateAccessMode(selectedUserId, currentUserId) {
     } else {
 
         if(canvasEl) canvasEl.style.cursor = 'crosshair';
-        if(banner) banner.style.display = 'none';
+        if(banner) {
+            banner.classList.add('d-none');
+            banner.classList.remove('d-flex');
+        }
 
         if(noteInput) { 
             noteInput.disabled = false; 
@@ -111,42 +176,30 @@ function updateAccessMode(selectedUserId, currentUserId) {
     }
 }
 
-function loadUserAnnotations(userId) {
+async function loadUserAnnotations(userId) {
     console.log("Rendering annotations for:", userId);
     
     if(typeof window.selectBox === 'function') window.selectBox(null);
 
-    let mockBoxes = [];
-    if (userId === 'user_kacper') {
-        const saved = localStorage.getItem('va_boxes_kacper');
-        if (saved) {
-            try {
-                mockBoxes = JSON.parse(saved);
-                console.log("Loaded owner boxes from localStorage");
-            } catch(e) {
-                console.error("Error parsing saved boxes", e);
-            }
+    let videoId = new URLSearchParams(window.location.search).get('v') || sessionStorage.getItem('va_video_id');
+    let loadedBoxes = [];
+    
+    try {
+        let rawId = userId.replace('user_', '');
+        let r = await fetch(`http://localhost:8000/videos/${videoId}/annotations?user_id=${rawId}`, {
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        if(r.ok) {
+            loadedBoxes = await r.json();
+            console.log("Loaded", loadedBoxes.length, "boxes from API");
         } else {
-            mockBoxes = [
-                { id: 'box_k1', label: 'Car_3', x: 210, y: 150, width: 300, height: 180, color: '#00E5FF', timestamp: 0.5 }
-            ];
+            console.error("Failed to load from API");
         }
-    } else if (userId === 'user_tomasz') {
-        mockBoxes = [
-            { id: 'box_t1', label: 'Truck_A', x: 450, y: 200, width: 250, height: 150, color: '#FFD700', timestamp: 1.2 },
-            { id: 'box_t2', label: 'License_Plate', x: 500, y: 320, width: 80, height: 40, color: '#FFD700', timestamp: 1.2 }
-        ];
-    } else if (userId === 'user_alex') {
-        mockBoxes = [
-            { id: 'box_a1', label: 'Person_Walking', x: 600, y: 400, width: 60, height: 120, color: '#8B5CF6', timestamp: 2.8 }
-        ];
-    } else {
-        mockBoxes = [
-            { id: 'box_m1', label: 'Sign_Post', x: 100, y: 50, width: 120, height: 100, color: '#F59E0B', timestamp: 3.5 }
-        ];
+    } catch(e) {
+        console.error("Error fetching annotations", e);
     }
 
-    AppState.updateBoxes(mockBoxes);
+    AppState.updateBoxes(loadedBoxes);
 }
 
 window.saveToLocalStorage = function() {

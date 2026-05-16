@@ -51,6 +51,32 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelector("form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            let b = {
+                username: document.getElementById('nameInput').value,
+                email: document.getElementById('emailInput').value,
+                password: document.getElementById('passwordInput').value
+            };
+            let r = await fetch('http://localhost:8000/auth/register', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(b)
+            });
+            if(r.ok) {
+                alert("Konto zostało pomyślnie utworzone! Możesz się teraz zalogować.");
+                window.location.href = "login.html";
+            } else {
+                try {
+                    let err = await r.json();
+                    alert("Błąd rejestracji: " + (err.detail || "Nieznany błąd"));
+                } catch(e) {
+                    alert("Błąd rejestracji. Spróbuj ponownie.");
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

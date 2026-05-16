@@ -6,9 +6,7 @@ let isDrawing = false;
 let startX, startY;
 let currentBox = null;
 
-window.boxes = [
-    { id: 'box_1', label: 'Car_3', x: 210.0, y: 150.8, width: 300, height: 180, color: '#00E5FF', timestamp: 0.5 }
-];
+window.boxes = [];
 
 function resizeCanvas() {
     canvas.width = videoContainer.clientWidth;
@@ -70,7 +68,9 @@ canvas.addEventListener('mouseup', () => {
     if (isDrawing && currentBox && currentBox.width > 10 && currentBox.height > 10) {
         currentBox.id = 'box_' + Date.now();
         currentBox.label = 'New_Object';
-        currentBox.timestamp = window.player ? window.player.getCurrentTime() : 0;
+        let t = 0;
+        try { if(window.player && typeof window.player.getCurrentTime === 'function') t = window.player.getCurrentTime(); } catch(e) { console.warn("Player time error", e); }
+        currentBox.timestamp = t;
         
         AppState.boxes.push(currentBox);
         AppState.notify();
@@ -86,7 +86,8 @@ function drawAllBoxes() {
     if(!ctx || !AppState.boxes) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    const currentTime = window.player ? window.player.getCurrentTime() : 0;
+    let currentTime = 0;
+    try { if(window.player && typeof window.player.getCurrentTime === 'function') currentTime = window.player.getCurrentTime(); } catch(e) {}
     
     AppState.boxes.forEach(box => {
         if (window.player) {

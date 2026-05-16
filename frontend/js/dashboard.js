@@ -1,50 +1,38 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const projectsGrid = document.getElementById('projectsGrid');
     const createBtn = document.getElementById('createProjectBtn');
     const urlInput = document.getElementById('videoUrl');
     const nameInput = document.getElementById('projectName');
 
+    let projects = [];
 
-    let projects = [
-        { 
-            id: 1, 
-            title: 'Highway Traffic Analysis (Cam 04)', 
-            meta: 'May 1, 2026 • 142 Annotations', 
-            ytId: 'YE7VzlLtp-4',
-            img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80'
-        },
-        { 
-            id: 2, 
-            title: 'Street View Pedestrian Tracking', 
-            meta: 'Apr 28, 2026 • 87 Annotations', 
-            ytId: '5_XDiK-Y-6A',
-            img: 'https://images.unsplash.com/photo-1557800636-894a64c1696f?auto=format&fit=crop&w=600&q=80'
-        },
-        { 
-            id: 3, 
-            title: 'Factory Assembly QA Check', 
-            meta: 'Apr 25, 2026 • 304 Annotations', 
-            ytId: 'u6X_D_0pGAs',
-            img: 'https://images.unsplash.com/photo-1612810806563-4cb8265db55b?auto=format&fit=crop&w=600&q=80'
+    async function load() {
+        let r = await fetch('http://localhost:8000/user/videos', {
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        if(r.ok) {
+            projects = await r.json();
+            renderProjects();
+        } else if(r.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
         }
-    ];
+    }
 
     function renderProjects() {
         if (!projectsGrid) return;
         projectsGrid.innerHTML = '';
-
         projects.forEach(project => {
             const card = document.createElement('div');
             card.className = 'col-md-4';
             card.innerHTML = `
                 <div class="va-card project-card">
-                    <div class="project-card-img" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${project.img}'); background-size: cover; background-position: center;"></div>
+                    <div class="project-card-img" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('https://img.youtube.com/vi/${project.youtube_id}/hqdefault.jpg'); background-size: cover; background-position: center;"></div>
                     <div class="project-card-body">
-                        <h3 class="project-card-title">${project.title}</h3>
-                        <div class="project-card-meta">${project.meta}</div>
+                        <h3 class="project-card-title">${project.title || project.youtube_id}</h3>
                         <div class="project-actions">
-                            <a href="#" class="btn btn-icon open-project-btn" data-ytid="${project.ytId}" title="Edit Project"><i class="bi bi-pencil"></i></a>
-                            <button class="btn btn-icon delete-project-btn" data-id="${project.id}" title="Delete Project"><i class="bi bi-trash"></i></button>
+                            <a href="#" class="btn btn-icon open-project-btn" data-ytid="${project.youtube_id}"><i class="bi bi-pencil"></i></a>
+                            <button class="btn btn-icon delete-project-btn" data-id="${project.id}"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
                 </div>
@@ -52,69 +40,74 @@ document.addEventListener('DOMContentLoaded', () => {
             projectsGrid.appendChild(card);
         });
 
-
         document.querySelectorAll('.open-project-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                const ytId = btn.getAttribute('data-ytid');
-                sessionStorage.setItem('va_video_id', ytId);
-                window.location.href = 'index.html?v=' + ytId;
+                sessionStorage.setItem('va_video_id', btn.getAttribute('data-ytid'));
+                window.location.href = 'index.html?v=' + btn.getAttribute('data-ytid');
             });
         });
 
-
         document.querySelectorAll('.delete-project-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = parseInt(btn.getAttribute('data-id'));
-                if (confirm('Are you sure you want to delete this project?')) {
-                    projects = projects.filter(p => p.id !== id);
-                    renderProjects();
-                    console.log(`Project ${id} deleted (local state)`);
-
+            btn.addEventListener('click', async (e) => {
+                let r = await fetch('http://localhost:8000/videos/' + btn.getAttribute('data-id'), {
+                    method: 'DELETE',
+                    headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+                });
+                if(r.ok) {
+                    load();
+                } else {
+                    alert("Blad");
                 }
             });
         });
     }
 
-    if (createBtn && urlInput && nameInput) {
-        createBtn.addEventListener('click', () => {
-            const url = urlInput.value.trim();
-            const name = nameInput.value.trim() || 'Untitled Project';
-            
-            if (!url) {
-                alert('Please enter a Video URL.');
-                return;
-            }
-
-            const videoId = Utils.extractYouTubeId(url);
-
-            if (videoId) {
-                const newProject = {
-                    id: Date.now(),
-                    title: name,
-                    meta: `${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • 0 Annotations`,
-                    ytId: videoId,
-                    img: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80'
-                };
-
-                projects.unshift(newProject);
-                renderProjects();
-
-
-                const modalEl = document.getElementById('newProjectModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-
-
-                urlInput.value = '';
-                nameInput.value = '';
-
-                console.log('New project created:', newProject);
+    if (createBtn) {
+        createBtn.addEventListener('click', async () => {
+            let r = await fetch('http://localhost:8000/videos', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: urlInput.value,
+                    title: nameInput.value.trim() || 'Untitled Project'
+                })
+            });
+            if(r.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('newProjectModal')).hide();
+                load();
             } else {
-                alert('Invalid YouTube URL. Please make sure it contains a video ID.');
+                try {
+                    let err = await r.json();
+                    alert("Błąd: " + (err.detail || "Nieznany błąd"));
+                } catch(e) {
+                    alert("Wystąpił błąd podczas dodawania projektu.");
+                }
             }
         });
     }
 
-    renderProjects();
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            if(confirm("Czy na pewno chcesz usunąć konto? To bezpowrotnie skasuje wszystkie Twoje adnotacje!")) {
+                let r = await fetch('http://localhost:8000/auth/user', {
+                    method: 'DELETE',
+                    headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+                });
+                if(r.ok) {
+                    localStorage.removeItem('token');
+                    alert("Konto zostało usunięte. Do zobaczenia!");
+                    window.location.href = 'register.html';
+                } else {
+                    alert("Wystąpił błąd podczas usuwania konta.");
+                }
+            }
+        });
+    }
+
+    load();
 });

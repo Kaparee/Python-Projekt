@@ -31,14 +31,29 @@ const AppState = {
                 console.error("Observer notification error:", e);
             }
         });
-
-        this.save();
     },
 
-    save: function () {
+    save: async function () {
         if (!window.isReadOnly) {
             localStorage.setItem('va_boxes_kacper', JSON.stringify(this.boxes));
             localStorage.setItem('va_notes_kacper', JSON.stringify(this.notes));
+
+            let videoId = new URLSearchParams(window.location.search).get('v') || sessionStorage.getItem('va_video_id');
+            if(videoId) {
+                try {
+                    let r = await fetch(`http://localhost:8000/videos/${videoId}/annotations`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(this.boxes)
+                    });
+                    if(!r.ok) console.error("Failed to save to API");
+                } catch(e) {
+                    console.error("API error", e);
+                }
+            }
         }
     },
 
