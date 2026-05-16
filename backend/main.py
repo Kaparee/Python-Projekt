@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app import models
 from app.database import engine
-from app.api import auth, videos, annotations
+from app.api import auth, videos, annotations, events
 
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI()
+
+app = FastAPI(title="Video Annotation System")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,3 +20,4 @@ app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(videos.user_router)
 app.include_router(annotations.router)
+app.include_router(events.router)
