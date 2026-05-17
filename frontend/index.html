@@ -114,14 +114,20 @@
                 </div>
 
                 <div class="mb-2">
-                    <label class="form-label">Category Tag</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">Category Tag</label>
+                        <button id="add-custom-tag-btn" class="btn btn-link btn-xs p-0 text-decoration-none text-cyan" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Add Custom</button>
+                    </div>
                     <select id="tag-select" class="form-select va-input-bg">
                         <option value="">Loading tags...</option>
                     </select>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Action State</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">Action State</label>
+                        <button id="add-custom-state-btn" class="btn btn-link btn-xs p-0 text-decoration-none text-cyan" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Add Custom</button>
+                    </div>
                     <select id="state-select" class="form-select va-input-bg">
                         <option value="">Loading states...</option>
                     </select>
@@ -177,6 +183,28 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal for custom tag/state -->
+    <div class="modal fade" id="customTagStateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content" style="background: #111827; border: 1px solid #1F2937; color: #fff; border-radius: 12px;">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title" id="customModalTitle" style="font-size: 1rem; font-weight: 600;">Add Custom Item</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size: 0.85rem; color: #9CA3AF;">Name</label>
+                        <input type="text" id="custom-item-name" class="form-control va-input-bg" placeholder="Enter name...">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary-dark btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="save-custom-item-btn" class="btn btn-primary btn-sm px-3">Save</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -27,9 +27,12 @@ canvas.addEventListener('mousedown', (e) => {
     
     let clickedBox = null;
     const currentBoxes = AppState.boxes || [];
+    let currentTime = 0;
+    try { if(window.player && typeof window.player.getCurrentTime === 'function') currentTime = window.player.getCurrentTime(); } catch(e) {}
     for(let i = currentBoxes.length - 1; i >= 0; i--) {
         const b = currentBoxes[i];
-        if(startX >= b.x && startX <= b.x + b.width && startY >= b.y && startY <= b.y + b.height) {
+        const timeDiff = window.player ? Math.abs((b.timestamp || 0) - currentTime) : 0;
+        if(timeDiff <= 0.5 && startX >= b.x && startX <= b.x + b.width && startY >= b.y && startY <= b.y + b.height) {
             clickedBox = b;
             break;
         }

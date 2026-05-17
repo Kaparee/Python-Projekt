@@ -84,10 +84,25 @@ def get_video_by_youtube_id(youtube_id: str, db: Session = Depends(database.get_
 
 @router.get("/{youtube_id}/versions")
 def get_video_versions(youtube_id: str, db: Session = Depends(database.get_db)):
-    users = db.query(models.User).join(models.Annotation).join(models.Video). \
-        filter(models.Video.youtube_id == youtube_id).distinct().all()
-
-    if not users:
+    video = db.query(models.Video).filter(models.Video.youtube_id == youtube_id).first()
+    if not video:
         return []
 
-    return users
+    # Get distinct user IDs from annotations and events for this video
+    annotator_ids = db.query(models.Annotation.user_id).filter(models.Annotation.video_id == video.id).distinct().all()
+    event_user_ids = db.query(models.Event.user_id).filter(models.Event.video_id == video.id).distinct().all()
+
+    user_ids = set()
+    if video.added_by_user_id:
+        user_ids.add(video.added_by_user_id)
+        
+    for (uid,) in annotator_ids:
+        user_ids.add(uid)
+        
+    for (uid,) in event_user_ids:
+        user_ids.add(uid)
+
+    if not user_ids:
+        return []
+
+    return db.query(models.User).filter(models.User.id.in_(list(user_ids))).all()

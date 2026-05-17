@@ -211,3 +211,6 @@ async function loadUserAnnotations(userId) {
 window.saveToLocalStorage = function() {
     AppState.save();
 };
+
+window.loadUserAnnotations = loadUserAnnotations;
+window.updateAccessMode = updateAccessMode;

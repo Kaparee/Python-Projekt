@@ -32,6 +32,17 @@ services:
     networks:
       - visionannotate_network
 
+  frontend:
+    image: nginx:alpine
+    container_name: visionannotate_frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    restart: always
+    networks:
+      - visionannotate_network
+
 networks:
   visionannotate_network:
     driver: bridge

@@ -10,15 +10,24 @@ router = APIRouter(
 )
 
 
-def check_time_overlap(db: Session, user_id: int, video_id: str, start_time: float, end_time: float,
+def check_time_overlap(db: Session, user_id: int, video_id, start_time: float, end_time: float,
                        exclude_event_id: int = None):
     if start_time >= end_time:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Czas startu musi być mniejszy niż czas końca.")
 
+    # Resolve video_id if it's a youtube_id string
+    if isinstance(video_id, str) and not video_id.isdigit():
+        video = db.query(models.Video).filter(models.Video.youtube_id == video_id).first()
+        if not video:
+            raise HTTPException(status_code=404, detail="Wideo nie istnieje")
+        resolved_video_id = video.id
+    else:
+        resolved_video_id = int(video_id)
+
     query = db.query(models.Event).filter(
         models.Event.user_id == user_id,
-        models.Event.video_id == video_id,
+        models.Event.video_id == resolved_video_id,
         models.Event.start_time < end_time,
         models.Event.end_time > start_time
     )
@@ -41,13 +50,32 @@ def create_event(
         db: Session = Depends(database.get_db),
         current_user=Depends(oauth2.get_current_user)  # Wymaga zalogowania do tworzenia!
 ):
-    check_time_overlap(db, current_user.id, event.video_id, event.start_time, event.end_time)
+    video = db.query(models.Video).filter(models.Video.youtube_id == event.video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Wideo nie istnieje")
 
-    new_event = models.Event(user_id=current_user.id, **event.model_dump())
+    check_time_overlap(db, current_user.id, video.id, event.start_time, event.end_time)
+
+    event_data = event.model_dump()
+    event_data["video_id"] = video.id
+
+    new_event = models.Event(user_id=current_user.id, **event_data)
     db.add(new_event)
     db.commit()
     db.refresh(new_event)
-    return new_event
+    
+    return schemas.EventOut(
+        id=new_event.id,
+        user_id=new_event.user_id,
+        video_id=event.video_id,
+        tag_id=new_event.tag_id,
+        state_id=new_event.state_id,
+        start_time=new_event.start_time,
+        end_time=new_event.end_time,
+        comment=new_event.comment,
+        tag=new_event.tag,
+        state=new_event.state
+    )
 
 @router.get("/", response_model=List[schemas.EventOut])
 def get_events(
@@ -55,12 +83,31 @@ def get_events(
         user_id: Optional[int] = None,
         db: Session = Depends(database.get_db),
 ):
-    query = db.query(models.Event).filter(models.Event.video_id == video_id)
+    video = db.query(models.Video).filter(models.Video.youtube_id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Wideo nie istnieje")
+
+    query = db.query(models.Event).filter(models.Event.video_id == video.id)
 
     if user_id is not None:
         query = query.filter(models.Event.user_id == user_id)
 
-    return query.order_by(models.Event.start_time.asc()).all()
+    db_events = query.order_by(models.Event.start_time.asc()).all()
+    events_out = []
+    for e in db_events:
+        events_out.append(schemas.EventOut(
+            id=e.id,
+            user_id=e.user_id,
+            video_id=video_id,
+            tag_id=e.tag_id,
+            state_id=e.state_id,
+            start_time=e.start_time,
+            end_time=e.end_time,
+            comment=e.comment,
+            tag=e.tag,
+            state=e.state
+        ))
+    return events_out
 
 
 # UPDATE (KAMIL-04)
@@ -89,7 +136,23 @@ def update_event(
 
     event_query.update(updated_event.model_dump(exclude_unset=True), synchronize_session=False)
     db.commit()
-    return event_query.first()
+    
+    updated = event_query.first()
+    video = db.query(models.Video).filter(models.Video.id == updated.video_id).first()
+    youtube_id = video.youtube_id if video else str(updated.video_id)
+    
+    return schemas.EventOut(
+        id=updated.id,
+        user_id=updated.user_id,
+        video_id=youtube_id,
+        tag_id=updated.tag_id,
+        state_id=updated.state_id,
+        start_time=updated.start_time,
+        end_time=updated.end_time,
+        comment=updated.comment,
+        tag=updated.tag,
+        state=updated.state
+    )
 
 
 # DELETE (KAMIL-04)

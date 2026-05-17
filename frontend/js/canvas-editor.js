@@ -50,6 +50,11 @@ window.deleteSelectedBox = function() {
 canvasEl.addEventListener('mousedown', (e) => {
     if(window.isReadOnly || !window.selectedBox) return;
     
+    let currentTime = 0;
+    try { if(window.player && typeof window.player.getCurrentTime === 'function') currentTime = window.player.getCurrentTime(); } catch(err) {}
+    const timeDiff = window.player ? Math.abs((window.selectedBox.timestamp || 0) - currentTime) : 0;
+    if(timeDiff > 0.5) return;
+    
     const rect = canvasEl.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;

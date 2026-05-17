@@ -385,16 +385,93 @@
         }
     }
 
+    let currentCustomType = 'tag';
+
+    function initCustomButtons() {
+        const addTagBtn = document.getElementById('add-custom-tag-btn');
+        const addStateBtn = document.getElementById('add-custom-state-btn');
+        const saveCustomBtn = document.getElementById('save-custom-item-btn');
+        const customModalEl = document.getElementById('customTagStateModal');
+        const inputEl = document.getElementById('custom-item-name');
+        
+        if(!addTagBtn || !addStateBtn || !saveCustomBtn || !customModalEl) return;
+        
+        let modalInstance = null;
+        try {
+            modalInstance = new bootstrap.Modal(customModalEl);
+        } catch(e) {
+            console.error("Bootstrap modal init error", e);
+        }
+        
+        addTagBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(window.isReadOnly) return;
+            currentCustomType = 'tag';
+            document.getElementById('customModalTitle').innerText = 'Add Custom Category';
+            inputEl.value = '';
+            modalInstance?.show();
+        });
+        
+        addStateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(window.isReadOnly) return;
+            currentCustomType = 'state';
+            document.getElementById('customModalTitle').innerText = 'Add Custom Action State';
+            inputEl.value = '';
+            modalInstance?.show();
+        });
+        
+        saveCustomBtn.addEventListener('click', async () => {
+            const name = inputEl.value.trim();
+            if(!name) {
+                Utils.showToast('Please enter a name!', 'danger');
+                return;
+            }
+            
+            const videoId = Utils.getVideoContextId();
+            const url = currentCustomType === 'tag' ? 'http://localhost:8000/tags/' : 'http://localhost:8000/tags/states';
+            
+            const payload = {
+                name: name,
+                video_id: videoId
+            };
+            
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if(res.ok) {
+                    Utils.showToast('Custom item added successfully!', 'success');
+                    modalInstance?.hide();
+                    await loadPanelData();
+                } else {
+                    const err = await res.json();
+                    Utils.showToast('Error: ' + (err.detail || 'Could not add item'), 'danger');
+                }
+            } catch(e) {
+                console.error("Custom item save error", e);
+            }
+        });
+    }
+
     async function loadPanelData() {
         const tagSelect = document.getElementById('tag-select');
         const stateSelect = document.getElementById('state-select');
 
         if (!tagSelect || !stateSelect) return;
 
+        const videoId = Utils.getVideoContextId();
+
         try {
             const [tagsRes, statesRes] = await Promise.all([
-                fetch('http://localhost:8000/tags/'),
-                fetch('http://localhost:8000/tags/states')
+                fetch(`http://localhost:8000/tags/?video_id=${videoId}`),
+                fetch(`http://localhost:8000/tags/states?video_id=${videoId}`)
             ]);
 
             const tags = await tagsRes.json();
@@ -464,6 +541,7 @@
     function initPanels() {
         loadPanelData();
         setupTimeControls();
+        initCustomButtons();
 
         const saveBtn = document.getElementById('save-event-btn');
         if (saveBtn) {
@@ -530,6 +608,9 @@
             });
 
             applyReadOnlyLogic(targetUserId == currentUserId);
+            if (typeof window.updateAccessMode === 'function') {
+                window.updateAccessMode(targetUserId.toString(), currentUserId.toString());
+            }
 
         } catch (e) { console.error('Load Events Error:', e); }
     }
@@ -602,6 +683,8 @@
         let inputArea = document.querySelector('.note-input-container');
         const stateBtns = document.querySelectorAll('.btn-state');
         const timeBtns = document.querySelectorAll('.btn-outline-secondary');
+        const addCustomTagBtn = document.getElementById('add-custom-tag-btn');
+        const addCustomStateBtn = document.getElementById('add-custom-state-btn');
 
         if (!isOwner) {
             if (inputArea) {
@@ -610,6 +693,8 @@
             }
             stateBtns.forEach(b => b.classList.add('disabled'));
             timeBtns.forEach(b => b.style.display = 'none');
+            if (addCustomTagBtn) addCustomTagBtn.style.display = 'none';
+            if (addCustomStateBtn) addCustomStateBtn.style.display = 'none';
         } else {
             if (!inputArea && noteInputContainerCache) {
                 const sidebar = document.querySelector('.workspace-sidebar');
@@ -617,6 +702,8 @@
             }
             stateBtns.forEach(b => b.classList.remove('disabled'));
             timeBtns.forEach(b => b.style.display = 'flex');
+            if (addCustomTagBtn) addCustomTagBtn.style.display = 'inline-block';
+            if (addCustomStateBtn) addCustomStateBtn.style.display = 'inline-block';
         }
     }
 

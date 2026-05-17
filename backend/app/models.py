@@ -39,8 +39,9 @@ class Annotation(Base):
 class Tag(Base):
     __tablename__ = "tags"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     color_hex = Column(String(7), nullable=False, default="#00FF00")
+    video_id = Column(Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=True)
 
 class StateTransition(Base):
     __tablename__ = "state_transitions"
@@ -71,8 +72,9 @@ class Comment(Base):
 class State(Base):
     __tablename__ = "states"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     color_hex = Column(String(7), nullable=False, default="#FF0000")
+    video_id = Column(Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=True)
 
 
 class Event(Base):

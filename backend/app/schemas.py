@@ -17,15 +17,23 @@ class UserResponse(UserBase):
 
 class TagBase(BaseModel):
     name: str
+    color_hex: Optional[str] = None
+    video_id: Optional[str] = None
 
-class TagOut(TagBase):
+class TagOut(BaseModel):
     id: int
+    name: str
+    color_hex: str
+    video_id: Optional[int] = None
 
     class Config:
         from_attributes = True
 
-class StateOut(TagBase):
+class StateOut(BaseModel):
     id: int
+    name: str
+    color_hex: str
+    video_id: Optional[int] = None
 
     class Config:
         from_attributes = True
