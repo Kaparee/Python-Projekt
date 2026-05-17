@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
@@ -65,3 +66,32 @@ class Comment(Base):
     timestamp = Column(Float, nullable=False)
     content = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class State(Base):
+    __tablename__ = "states"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    color_hex = Column(String(7), nullable=False, default="#FF0000")
+
+
+class Event(Base):
+    __tablename__ = "events"
+    __table_args__ = (
+        Index("idx_events_video_user", "video_id", "user_id"),
+    )
+    id = Column(Integer, primary_key=True, index=True)
+    video_id = Column(Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="SET NULL"), nullable=True)
+    state_id = Column(Integer, ForeignKey("states.id", ondelete="SET NULL"), nullable=True)
+
+    start_time = Column(Float, nullable=False)
+    end_time = Column(Float, nullable=False)
+    comment = Column(String, nullable=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+
+    tag = relationship("Tag")
+    state = relationship("State")

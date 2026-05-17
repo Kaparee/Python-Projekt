@@ -876,3 +876,40 @@ h6 {
   height: 64px;
   cursor: pointer;
 }
+
+.va-input-bg {
+    background-color: var(--va-input-bg) !important;
+    border: 1px solid var(--va-input-border) !important;
+    color: var(--va-text-main) !important;
+    font-size: 0.85rem;
+}
+
+.va-input-bg:focus {
+    border-color: var(--va-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25) !important;
+}
+
+.input-group .btn-outline-secondary {
+    border-color: var(--va-input-border);
+    color: var(--va-text-muted);
+}
+
+.input-group .btn-outline-secondary:hover {
+    background-color: var(--va-primary);
+    color: white;
+    border-color: var(--va-primary);
+}
+
+.timeline-item {
+    cursor: pointer;
+    transition: background 0.2s;
+    padding: 0.5rem 1rem 0.5rem 1.5rem;
+}
+
+.timeline-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.timeline-text {
+    word-break: break-word;
+}

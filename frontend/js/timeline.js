@@ -385,6 +385,244 @@
         }
     }
 
+    async function loadPanelData() {
+        const tagSelect = document.getElementById('tag-select');
+        const stateSelect = document.getElementById('state-select');
+
+        if (!tagSelect || !stateSelect) return;
+
+        try {
+            const [tagsRes, statesRes] = await Promise.all([
+                fetch('http://localhost:8000/tags/'),
+                fetch('http://localhost:8000/tags/states')
+            ]);
+
+            const tags = await tagsRes.json();
+            const states = await statesRes.json();
+
+            tagSelect.innerHTML = '<option value="">-- Select Tag --</option>' +
+                tags.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+            stateSelect.innerHTML = '<option value="">-- Select State --</option>' +
+                states.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        } catch (error) {
+            console.error("Błąd API:", error);
+        }
+    }
+
+    function setupTimeControls() {
+        const setTime = (inputId) => {
+            if (window.player && typeof window.player.getCurrentTime === 'function') {
+                const time = window.player.getCurrentTime().toFixed(2);
+                document.getElementById(inputId).value = time;
+            }
+        };
+
+        document.getElementById('set-start-btn')?.addEventListener('click', () => setTime('start-time-input'));
+        document.getElementById('set-end-btn')?.addEventListener('click', () => setTime('end-time-input'));
+
+        document.getElementById('quick-start-btn')?.addEventListener('click', () => setTime('start-time-input'));
+        document.getElementById('quick-stop-btn')?.addEventListener('click', () => setTime('end-time-input'));
+    }
+
+    async function saveEvent() {
+        const videoId = Utils.getVideoContextId();
+
+        const payload = {
+            video_id: videoId,
+            tag_id: parseInt(document.getElementById('tag-select').value) || null,
+            state_id: parseInt(document.getElementById('state-select').value) || null,
+            start_time: parseFloat(document.getElementById('start-time-input').value),
+            end_time: parseFloat(document.getElementById('end-time-input').value),
+            comment: document.getElementById('event-comment').value
+        };
+
+        try {
+            const res = await fetch('http://localhost:8000/events/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                Utils.showToast('Zdarzenie zapisane!', 'success');
+                document.getElementById('event-comment').value = '';
+                // Odśwież listę logów po zapisaniu
+                fetchAndRenderEvents(videoId);
+            } else {
+                const err = await res.json();
+                Utils.showToast('Błąd: ' + (err.detail || 'Sprawdź czy czasy się nie nakładają'), 'danger');
+            }
+        } catch (e) {
+            console.error('Save error:', e);
+        }
+    }
+
+    function initPanels() {
+        loadPanelData();
+        setupTimeControls();
+
+        const saveBtn = document.getElementById('save-event-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveEvent);
+        }
+
+        // Zaladuj eventy zalogowanego usera przy starcie
+        const videoId = Utils.getVideoContextId();
+        if (videoId) fetchAndRenderEvents(videoId);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPanels);
+    } else {
+        initPanels();
+    }
+
+    let activeViewingUserId = null;
+
+    async function fetchAndRenderEvents(videoId, userId = null) {
+        const listContainer = document.getElementById('eventsTimelineList');
+        const badge = document.getElementById('eventCountBadge');
+        let currentUserId = null;
+        try {
+            const tokenPayload = JSON.parse(atob(localStorage.getItem('token').split('.')[1]));
+            currentUserId = tokenPayload.user_id || tokenPayload.sub;
+        } catch(e) {
+            console.error('JWT decode error:', e);
+            return;
+        }
+
+        const targetUserId = userId || currentUserId;
+        activeViewingUserId = targetUserId;
+
+        try {
+            const res = await fetch(`http://localhost:8000/events/?video_id=${videoId}&user_id=${targetUserId}`);
+            const events = await res.json();
+
+            badge.innerText = `${events.length} logs`;
+            listContainer.innerHTML = '';
+
+            events.forEach(event => {
+                const isOwner = event.user_id == currentUserId;
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                item.innerHTML = `
+                <div class="timeline-dot"></div>
+                <div class="timeline-line"></div>
+                <div class="d-flex justify-content-between align-items-start w-100">
+                    <div>
+                        <div class="timeline-time">${Utils.formatTime(event.start_time)} - ${Utils.formatTime(event.end_time)}</div>
+                        <div class="timeline-text" id="content-${event.id}">${event.comment || 'No comment'}</div>
+                        <div class="badge bg-secondary" style="font-size: 0.6rem;">${event.tag?.name || ''}</div>
+                    </div>
+                    ${isOwner ? `
+                        <div class="event-actions">
+                            <i class="bi bi-pencil-square text-muted me-2 pointer" onclick="editEventPrompt(${event.id})"></i>
+                            <i class="bi bi-trash text-danger pointer" onclick="deleteEvent(${event.id})"></i>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+                listContainer.appendChild(item);
+            });
+
+            applyReadOnlyLogic(targetUserId == currentUserId);
+
+        } catch (e) { console.error('Load Events Error:', e); }
+    }
+
+    window.fetchAndRenderEvents = fetchAndRenderEvents;
+
+    async function deleteEvent(id) {
+        if (!confirm('Usunąć ten log?')) return;
+        const currentVideoId = Utils.getVideoContextId();
+        const res = await fetch(`http://localhost:8000/events/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+            Utils.showToast('Log usunięty', 'success');
+            fetchAndRenderEvents(currentVideoId);
+        }
+    }
+
+    function editEventPrompt(id) {
+        const textEl = document.getElementById(`content-${id}`);
+        const oldText = textEl.innerText;
+
+        textEl.style.display = 'none';
+
+        const inputEl = document.createElement('input');
+        inputEl.type = 'text';
+        inputEl.className = 'form-control form-control-sm mt-1 mb-1';
+        inputEl.value = oldText;
+
+        const saveEdit = async () => {
+            const newText = inputEl.value;
+            const currentVideoId = Utils.getVideoContextId();
+            if (newText !== oldText) {
+                const res = await fetch(`http://localhost:8000/events/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ comment: newText })
+                });
+                if (res.ok) {
+                    Utils.showToast('Komentarz zaktualizowany', 'success');
+                    fetchAndRenderEvents(currentVideoId);
+                }
+            } else {
+                inputEl.remove();
+                textEl.style.display = 'block';
+            }
+        };
+
+        inputEl.addEventListener('blur', saveEdit);
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                inputEl.blur();
+            } else if (e.key === 'Escape') {
+                inputEl.remove();
+                textEl.style.display = 'block';
+            }
+        });
+
+        textEl.parentNode.insertBefore(inputEl, textEl.nextSibling);
+        inputEl.focus();
+    }
+
+    let noteInputContainerCache = null;
+
+    function applyReadOnlyLogic(isOwner) {
+        let inputArea = document.querySelector('.note-input-container');
+        const stateBtns = document.querySelectorAll('.btn-state');
+        const timeBtns = document.querySelectorAll('.btn-outline-secondary');
+
+        if (!isOwner) {
+            if (inputArea) {
+                noteInputContainerCache = inputArea;
+                inputArea.remove();
+            }
+            stateBtns.forEach(b => b.classList.add('disabled'));
+            timeBtns.forEach(b => b.style.display = 'none');
+        } else {
+            if (!inputArea && noteInputContainerCache) {
+                const sidebar = document.querySelector('.workspace-sidebar');
+                sidebar.appendChild(noteInputContainerCache);
+            }
+            stateBtns.forEach(b => b.classList.remove('disabled'));
+            timeBtns.forEach(b => b.style.display = 'flex');
+        }
+    }
+
+    window.deleteEvent = deleteEvent;
+    window.editEventPrompt = editEventPrompt;
+
     window.addEventListener('resize', resize);
     resize();
     checkIfAlreadyReady();

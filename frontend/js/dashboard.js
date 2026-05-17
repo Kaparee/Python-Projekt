@@ -109,5 +109,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    async function saveNewEvent() {
+        const videoId = new URLSearchParams(window.location.search).get('v_id') || 1; // Przykładowe pobieranie ID filmu
+        const startTime = parseFloat(document.getElementById('start-time-input').value);
+        const endTime = parseFloat(document.getElementById('end-time-input').value);
+        const tagId = document.getElementById('tag-select').value;
+        const stateId = document.getElementById('state-select').value;
+        const commentText = document.getElementById('event-comment')?.value;
+
+        const eventData = {
+            video_id: parseInt(videoId),
+            tag_id: tagId ? parseInt(tagId) : null,
+            state_id: stateId ? parseInt(stateId) : null,
+            start_time: startTime,
+            end_time: endTime,
+            content: commentText
+        };
+
+        try {
+            const response = await fetch('http://localhost:8000/events/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(eventData)
+            });
+
+            if (response.status === 201) {
+                alert("Zdarzenie dodane pomyślnie!");
+            } else if (response.status === 409) {
+                alert("Błąd: Czas nakłada się na inne zdarzenie!");
+            } else {
+                const err = await response.json();
+                alert("Błąd: " + err.detail);
+            }
+        } catch (error) {
+            console.error("Błąd zapisu:", error);
+        }
+    }
+
     load();
 });

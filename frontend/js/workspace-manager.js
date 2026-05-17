@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(typeof window.loadUserAnnotations === 'function') {
                 window.loadUserAnnotations(selectedUserId);
             }
+            if(typeof window.fetchAndRenderEvents === 'function') {
+                window.fetchAndRenderEvents(videoId, selectedUserId);
+            }
         }
     });
 
@@ -75,6 +78,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             if(typeof window.loadUserAnnotations === 'function') {
                 window.loadUserAnnotations(selectedUserId);
+            }
+            if(typeof window.fetchAndRenderEvents === 'function') {
+                window.fetchAndRenderEvents(videoId, selectedUserId);
             }
         }, 300);
     }
